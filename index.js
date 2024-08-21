@@ -1,7 +1,9 @@
 require('dotenv').config();
 
+// Fetch access token needed for further data requests
 function getToken()
 {
+	// Send request with ID and KEY
 	return (fetch
 	(
 		'https://api.intra.42.fr/oauth/token',
@@ -23,6 +25,7 @@ function getToken()
 		}
 	)
 
+	// Check response
 	.then(response =>
 	{
 		if (!response.ok)
@@ -31,9 +34,11 @@ function getToken()
 		return (response.json());
 	})
 
+	// Extract access token
 	.then(data =>
 		data.access_token)
 
+	// Check if nothing went wrong
 	.catch(error =>
 	{
 		console.error('Error: Access token post request:', error.message);
@@ -41,8 +46,10 @@ function getToken()
 	}));
 }
 
+// Fetch data from a given user
 function getData(token, login)
 {
+	// Send request using token
 	return (fetch
 	(
 		`https://api.intra.42.fr/v2/users/${login}`,
@@ -54,6 +61,7 @@ function getData(token, login)
 		}
 	)
 
+	// Check response
 	.then(response =>
 	{
 		if (!response.ok)
@@ -62,6 +70,7 @@ function getData(token, login)
 		return (response.json());
 	})
 
+	// Check if nothing went wrong
 	.catch(error =>
 	{
 		console.error('Error: Fetching user data:', error.message);
@@ -69,10 +78,12 @@ function getData(token, login)
 	}));
 }
 
+// Print certain data of given userdata packet
 function printAllData(data)
 {
 	console.log('\n      USER DATA');
 
+	// Print using table for a neat layout
 	console.table
 	({
 		ID: data.id,
@@ -87,27 +98,34 @@ function printAllData(data)
 	});
 }
 
+// Fetch access token
 getToken().then(token =>
 {
+	// Check token
 	if (!token)
 	{
 		console.error('Error: retrieving access token');
 		process.exit(1);
 	}
 
+	// Success
 	console.log('Successfully retrieved access token');
 	//console.log('Successfully retrieved access token:', token);
 
+	// Fetch a given user's data
 	return (getData(token, 'lpeeters'));
 })
 
+// Print user's data
 .then(data =>
 {
+	// Check data
 	if (!data)
 	{
 		console.error('Error: retrieving data')
 		process.exit(1);
 	}
 
+	// Print certain data of user
 	printAllData(data);
 });
