@@ -1,7 +1,7 @@
-require('dotenv').config();
+require('dotenv').config(); // Variables are needed to run the server, which I shouldn't share
 
 // Fetch access token needed for further data requests
-function getToken()
+function getToken(code)
 {
 	// Send request with ID and KEY
 	return (fetch
@@ -18,9 +18,11 @@ function getToken()
 
 			body: JSON.stringify
 			({
-				grant_type: 'client_credentials',
+				grant_type: 'authorization_code',
 				client_id: process.env.id,
 				client_secret: process.env.secret,
+				code: code,
+				redirect_uri: 'http://localhost:3000/callback'
 			}),
 		}
 	)
@@ -38,11 +40,43 @@ function getToken()
 	.then(data =>
 		data.access_token)
 
-	// Check if nothing went wrong
-	.catch(error =>
+	// Handle errors
+	.catch (error =>
 	{
 		console.error('Error: Access token post request:', error.message);
-		return (null);
+		throw (error);
+	}));
+}
+
+// Fetch data from a given user
+function getOwnData(token, login)
+{
+	// Send request using token
+	return (fetch
+	(
+		'https://api.intra.42.fr/v2/me',
+		{
+			headers:
+			{
+				Authorization: `Bearer ${token}`,
+			},
+		}
+	)
+
+	// Check response
+	.then(response =>
+	{
+		if (!response.ok)
+			throw (new Error(`HTTP error: Status: ${response.status}`));
+
+		return (response.json());
+	})
+
+	// Handle errors
+	.catch (error =>
+	{
+		console.error('Error: Fetching own user data:', error.message);
+		throw (error);
 	}));
 }
 
@@ -70,11 +104,11 @@ function getData(token, login)
 		return (response.json());
 	})
 
-	// Check if nothing went wrong
-	.catch(error =>
+	// Handle errors
+	.catch (error =>
 	{
 		console.error('Error: Fetching user data:', error.message);
-		return (null);
+		throw (error);
 	}));
 }
 
@@ -98,34 +132,44 @@ function printAllData(data)
 	});
 }
 
-// Fetch access token
-getToken().then(token =>
+// Handle user requests through browser
+function handleCallback(request, response)
 {
-	// Check token
-	if (!token)
+	// Fetch access token
+	getToken(request.query.code)
+
+	// Fetch own user data
+	.then(token =>
 	{
-		console.error('Error: retrieving access token');
-		process.exit(1);
-	}
+		console.log('Successfully retrieved access token');
 
-	// Success
-	console.log('Successfully retrieved access token');
-	//console.log('Successfully retrieved access token:', token);
+		return (getOwnData(token));
+	})
 
-	// Fetch a given user's data
-	return (getData(token, 'lpeeters'));
-})
+	// Print certain user data
+	.then(data =>
+	{
+		response.send('<h1>Successfully Retrieved User Data</h1><br><p>You may now close this window.</p>');
+		printAllData(data);
+	})
 
-// Print user's data
-.then(data =>
+	// Handle errors
+	.catch (error =>
+	{
+		response.status(500).send('Internal Server Error');
+		process.exitCode = 1;
+	});
+
+	// Close the server
+	server.close();
+}
+
+const express = require('express');
+const app = express();
+
+app.get('/callback', handleCallback);
+
+const server = app.listen(3000, () =>
 {
-	// Check data
-	if (!data)
-	{
-		console.error('Error: retrieving data')
-		process.exit(1);
-	}
-
-	// Print certain data of user
-	printAllData(data);
+	console.log('Server running locally');
 });
