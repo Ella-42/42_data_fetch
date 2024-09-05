@@ -25,7 +25,7 @@ function getToken(code)
 				client_id: process.env.id,
 				client_secret: process.env.secret,
 				code: code,
-				redirect_uri: 'http://localhost:3000/callback'
+				redirect_uri: 'https://retriever.moyai.one/'
 			}),
 		}
 	)
@@ -179,7 +179,7 @@ function printUserData(data)
 }
 
 // Handle user requests through browser
-function handleCallback(request, response)
+function handleRequest(request, response)
 {
 	// Fetch access token
 	let token;
@@ -210,53 +210,50 @@ function handleCallback(request, response)
 	// Print certain user data
 	.then(({A1, A2, Shi, Fu, Mi}) =>
 	{
-		A1 = A1.map(user => JSON.stringify(user, null, 2)).join('\n\n----------------------------------------------------------------------------------------------------\n\n')
-		A2 = A2.map(user => JSON.stringify(user, null, 2)).join('\n\n----------------------------------------------------------------------------------------------------\n\n')
-		Shi = Shi.map(user => JSON.stringify(user, null, 2)).join('\n\n----------------------------------------------------------------------------------------------------\n\n')
-		Fu = Fu.map(user => JSON.stringify(user, null, 2)).join('\n\n----------------------------------------------------------------------------------------------------\n\n')
-		Mi = Mi.map(user => JSON.stringify(user, null, 2)).join('\n\n----------------------------------------------------------------------------------------------------\n\n')
+		const FORMATTER = user => `<div style="display: flex; align-items: center;"><a href="https://profile.intra.42.fr/users/${user.login}" style="text-decoration: none; color: inherit;"><img src="${user.image.versions.micro}" alt="Profile picture" style="margin-right: 5px;" /></a><p style="font-family: 'Roboto', sans-serif; font-size: 12px;">${user.displayname} (${user.login}@${user.location})</p></div>`;
 
-		response.send(`<h2>Successfully Retrieved User Data</h2>
+		const A1Formatted = A1.map(FORMATTER).join('');
+		const A2Formatted = A2.map(FORMATTER).join('');
+		const ShiFormatted = Shi.map(FORMATTER).join('');
+		const FuFormatted = Fu.map(FORMATTER).join('');
+		const MiFormatted = Mi.map(FORMATTER).join('');
+
+		response.send(`<h2>Successfully Retrieved Data</h2>
 					   <h3>You may now close this window.</h3><br>
-					   <h5>On campus</h5><br>
-					   <h4>A1</h4>
-					   <pre>${A1}</pre><br>
-					   <h4>A2</h4>
-					   <pre>${A2}</pre><br>
-					   <h4>Shi</h4>
-					   <pre>${Shi}</pre><br>
-					   <h4>Fu</h4>
-					   <pre>${Fu}</pre><br>
-					   <h4>Mi</h4>
-					   <pre>${Mi}</pre>`);
+					   <h5>On campus:</h5>
+					   <h4>A1 (<span>${A1.length}</span>)</h4>
+					   <pre>${A1Formatted}</pre><br>
+					   <h4>A2 (<span>${A2.length}</span>)</h4>
+					   <pre>${A2Formatted}</pre><br>
+					   <h4>Shi (<span>${Shi.length}</span>)</h4>
+					   <pre>${ShiFormatted}</pre><br>
+					   <h4>Fu (<span>${Fu.length}</span>)</h4>
+					   <pre>${FuFormatted}</pre><br>
+					   <h4>Mi (<span>${Mi.length}</span>)</h4>
+					   <pre>${MiFormatted}</pre>`);
 
 		console.log(`\nOn campus\n
-					 \nA1\n${A1}
-					 \nA2\n${A2}
-					 \nShi\n${Shi}
-					 \nFu\n${Fu}
-					 \nMi\n${Mi}`);
+					 \nA1\n${A1Formatted}
+					 \nA2\n${A2Formatted}
+					 \nShi\n${ShiFormatted}
+					 \nFu\n${FuFormatted}
+					 \nMi\n${MiFormatted}`);
 	})
 
 	// Handle errors
 	.catch (error =>
 	{
-		response.status(500).send('Internal Server Error');
+		response.status(500).send(`Internal Server ${error}`);
 		console.error(error);
-
-		process.exitCode = 1;
 	});
-
-	// Close the server
-	server.close();
 }
 
 const express = require('express');
 const app = express();
 
-app.get('/callback', handleCallback);
+app.get('', handleRequest);
 
 const server = app.listen(3000, () =>
 {
-	console.log('Server running locally');
+	console.log('Server running at https://retriever.moyai.one/');
 });
