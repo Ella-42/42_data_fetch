@@ -1,7 +1,16 @@
-require('dotenv').config(); // Variables are needed to run the server, which I shouldn't share
+// Variables needed to run the server, which I shouldn't share
+require('dotenv').config();
+
+// Libraries needed
+const https = require('https');
+const express = require('express');
+const fs = require('fs');
 
 // Set the API url as a variable
 const URL = 'https://api.intra.42.fr/v2';
+
+// Set the URI as a variable
+const URI = 'https://retriever.moyai.one/';
 
 // Fetch access token needed for further data requests
 function getToken(code)
@@ -25,7 +34,7 @@ function getToken(code)
 				client_id: process.env.id,
 				client_secret: process.env.secret,
 				code: code,
-				redirect_uri: 'https://retriever.moyai.one/'
+				redirect_uri: `${URI}`
 			}),
 		}
 	)
@@ -36,6 +45,7 @@ function getToken(code)
 		if (!response.ok)
 			throw (new Error(`HTTP error: Status: ${response.status}`));
 
+		// Return data
 		return (response.json());
 	})
 
@@ -72,6 +82,7 @@ function getData(token, url)
 		if (!response.ok)
 			throw (new Error(`HTTP error: Status: ${response.status}`));
 
+		// Return data
 		return (response.json());
 	})
 
@@ -83,6 +94,7 @@ function getData(token, url)
 	}));
 }
 
+// Fetch the campus ID
 function getCampus(data)
 {
 	const campus = data.campus[0]?.id;
@@ -92,8 +104,10 @@ function getCampus(data)
 	return (campus);
 }
 
+// Fetch Campus data by page
 function getOnCampus(token, campus, page)
 {
+	// Send request using token with campus ID and page number
 	return (fetch
 	(
 		`${URL}/campus/${campus}/users?page[size]=100&page[number]=${page}`,
@@ -105,17 +119,21 @@ function getOnCampus(token, campus, page)
 		}
 	)
 
+	// Check response
 	.then(response =>
 	{
 		if (!response.ok)
 			throw (new Error(`HTTP error: Status: ${response.status}`));
 
+		// Return data
 		return (response.json());
 	}));
 }
 
+// Fetch all campus data
 function getAllOnCampus(token, campus)
 {
+	// Seriously, their API is really slow...
 	console.log('Working on obtaining data... (this may take a while)');
 
 	let A1 = [];
@@ -125,11 +143,13 @@ function getAllOnCampus(token, campus)
 	let Fu = [];
 	let Mi = [];
 
+	// Fetch data page by page
 	let page = 1;
 	const getNextPage = () =>
 	{
 		return (getOnCampus(token, campus, page)
 
+		// Sort by cluster
 		.then(usersPage =>
 		{
 			A1 = A1.concat(usersPage.filter(user => user.location && user.location.substring(0, 2) === 'a1'));
@@ -139,43 +159,18 @@ function getAllOnCampus(token, campus)
 			Fu = Fu.concat(usersPage.filter(user => user.location && user.location[0] === 'f'));
 			Mi = Mi.concat(usersPage.filter(user => user.location && user.location[0] === 'm'));
 
+			// Stop and send back data when finished
 			if (usersPage.length < 100)
 				return ({A1, A2, Shi, Fu, Mi});
 
+			// Recursive loop
 			page++;
 			return (getNextPage());
 		}));
 	};
 
+	// Send back array of data of campus sorted by cluster
 	return (getNextPage());
-}
-
-// Print user's data
-function printAllData(data)
-{
-	console.log('\n      USER DATA');
-
-	console.log(data);
-}
-
-// Print certain data of given userdata packet
-function printUserData(data)
-{
-	console.log('\n      USER DATA');
-
-	// Print using table for a neat layout
-	console.table
-	({
-		ID: data.id,
-		Login: data.login,
-		Email: data.email,
-		Name: data.displayname,
-		Level: data.cursus_users[0].level,
-		Points: data.correction_point,
-		Money: data.wallet,
-		Number: data.phone,
-		Campus: data.campus[0].name
-	});
 }
 
 // Handle user requests through browser
@@ -189,55 +184,76 @@ function handleRequest(request, response)
 	.then(gotToken =>
 	{
 		console.log('Successfully retrieved access token');
-		//console.log(`Successfully retrieved access token: ${gotToken}`);
 
 		token = gotToken;
 
 		return (getData(token, `${URL}/me`));
-		//return (getData(token, `${URL}/users/lpeeters`));
 	})
 
+	// Extract campus ID
 	.then(data =>
 	{
 		return (getCampus(data));
 	})
 
+	// Fetch all campus data
 	.then(campus =>
 	{
 		return (getAllOnCampus(token, campus));
 	})
 
-	// Print certain user data
+	// Send data to website and to the log
 	.then(({A1, A2, Shi, Fu, Mi}) =>
 	{
+		// Add a little bit of markup to make it look nicer
 		const FORMATTER = user => `<div style="display: flex; align-items: center;"><a href="https://profile.intra.42.fr/users/${user.login}" style="text-decoration: none; color: inherit;"><img src="${user.image.versions.micro}" alt="Profile picture" style="margin-right: 5px;" /></a><p style="font-family: 'Roboto', sans-serif; font-size: 12px;">${user.displayname} (${user.login}@${user.location})</p></div>`;
 
+		// Run the formatter on all the users in a cluster
 		const A1Formatted = A1.map(FORMATTER).join('');
 		const A2Formatted = A2.map(FORMATTER).join('');
 		const ShiFormatted = Shi.map(FORMATTER).join('');
 		const FuFormatted = Fu.map(FORMATTER).join('');
 		const MiFormatted = Mi.map(FORMATTER).join('');
 
-		response.send(`<h2>Successfully Retrieved Data</h2>
-					   <h3>You may now close this window.</h3><br>
-					   <h5>On campus:</h5>
-					   <h4>A1 (<span>${A1.length}</span>)</h4>
-					   <pre>${A1Formatted}</pre><br>
-					   <h4>A2 (<span>${A2.length}</span>)</h4>
-					   <pre>${A2Formatted}</pre><br>
-					   <h4>Shi (<span>${Shi.length}</span>)</h4>
-					   <pre>${ShiFormatted}</pre><br>
-					   <h4>Fu (<span>${Fu.length}</span>)</h4>
-					   <pre>${FuFormatted}</pre><br>
-					   <h4>Mi (<span>${Mi.length}</span>)</h4>
-					   <pre>${MiFormatted}</pre>`);
+		// Send the marked-up data to the website
+		response.send
+		(`
+			<h2>Successfully Retrieved Data</h2>
+			<h3>On campus:</h3>
+			<h4>A1 (<span>${A1.length}</span>)</h4>
+			<pre>${A1Formatted}</pre><br>
+			<h4>A2 (<span>${A2.length}</span>)</h4>
+			<pre>${A2Formatted}</pre><br>
+			<h4>Shi (<span>${Shi.length}</span>)</h4>
+			<pre>${ShiFormatted}</pre><br>
+			<h4>Fu (<span>${Fu.length}</span>)</h4>
+			<pre>${FuFormatted}</pre><br>
+			<h4>Mi (<span>${Mi.length}</span>)</h4>
+			<pre>${MiFormatted}</pre>
+		`);
 
-		console.log(`\nOn campus\n
-					 \nA1\n${A1Formatted}
-					 \nA2\n${A2Formatted}
-					 \nShi\n${ShiFormatted}
-					 \nFu\n${FuFormatted}
-					 \nMi\n${MiFormatted}`);
+		// Write raw data to the log
+		try
+		{
+			fs.writeFileSync
+			(
+				`/srv/log`,
+
+				`On campus:\n
+				\nA1\n\n${JSON.stringify(A1, null, 2)}
+				\nA2\n\n${JSON.stringify(A2, null, 2)}
+				\nShi\n\n${JSON.stringify(Shi, null, 2)}
+				\nFu\n\n${JSON.stringify(Fu, null, 2)}
+				\nMi\n\n${JSON.stringify(Mi, null, 2)}`
+			);
+		}
+
+		// Handle errors
+		catch (error)
+		{
+			console.error(error);
+		}
+
 	})
 
 	// Handle errors
@@ -248,12 +264,21 @@ function handleRequest(request, response)
 	});
 }
 
-const express = require('express');
+// Setup the app
 const app = express();
 
-app.get('', handleRequest);
+// Setup the https protocol
+https.createServer
+({
+	cert: fs.readFileSync('/srv/certificate.pem'),
+	key: fs.readFileSync('/srv/privatekey.pem')
+},
 
-const server = app.listen(3000, () =>
+// Listen on the redirected port (safety reasons)
+app).listen(8443, () =>
 {
-	console.log('Server running at https://retriever.moyai.one/');
+	console.log(`Server running at ${URI}`);
 });
+
+// Setup the request handler
+app.get('/', handleRequest);
