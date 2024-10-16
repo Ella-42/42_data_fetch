@@ -214,19 +214,27 @@ function formatter(campusUserData)
 		// The '?' here checks if user exists before checking their location, which I find pretty neat :)
 		if (!user?.location);
 
-		// Sort Antwerp
-		else if (user.location.startsWith('a1'))
-			A1.push(user);
-		else if (user.location.startsWith('a2'))
-			A2.push(user);
+		// Sort locations
+		else
+		{
+			// Check if user has a profile picture and replace it with a default one if they do not
+			if (!user.image.versions.micro)
+				user.image.versions.micro = `${URI}/default_profile_picture.jpg`
 
-		// Sort Brussels
-		else if (user.location[0] === 's')
-			Shi.push(user);
-		else if (user.location[0] === 'f')
-			Fu.push(user);
-		else if (user.location[0] === 'm')
-			Mi.push(user);
+			// Sort Antwerp
+			if (user.location.startsWith('a1'))
+				A1.push(user);
+			else if (user.location.startsWith('a2'))
+				A2.push(user);
+	
+			// Sort Brussels
+			else if (user.location[0] === 's')
+				Shi.push(user);
+			else if (user.location[0] === 'f')
+				Fu.push(user);
+			else if (user.location[0] === 'm')
+				Mi.push(user);
+		}
 	});
 
 	// Return array of data seperated into clusters
@@ -348,6 +356,9 @@ function handleRequest(request, response)
 
 // Setup the app
 const app = express();
+
+// Send images to server
+app.use(express.static('images'));
 
 // Setup the https protocol
 https.createServer
