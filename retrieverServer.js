@@ -2,7 +2,7 @@
 require('dotenv').config();
 
 // Libraries needed
-const https = require('https');
+const http = require('http');
 const express = require('express');
 const fs = require('fs');
 
@@ -10,7 +10,7 @@ const fs = require('fs');
 const URL = 'https://api.intra.42.fr/v2';
 
 // Set the URI as a variable
-const URI = 'https://retriever.moyai.one/';
+const URI = 'http://retriever.moyai.one/';
 
 // Fetch access token needed for further data requests
 function getToken(code)
@@ -360,15 +360,8 @@ const app = express();
 // Send images to server
 app.use(express.static('images'));
 
-// Setup the https protocol
-https.createServer
-({
-	cert: fs.readFileSync('/srv/certificate.pem'),
-	key: fs.readFileSync('/srv/privatekey.pem')
-},
-
-// Listen on the redirected port (safety reasons)
-app).listen(8443, () =>
+// Setup the http protocol (https is set up via cloudflare tunneling) and listen on the redirected port (safety reasons)
+http.createServer(app).listen(8443, () =>
 {
 	console.log(`Server running at ${URI}`);
 });

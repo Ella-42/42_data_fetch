@@ -25,3 +25,21 @@ function printUserData(data)
 		Campus: data.campus[0].name
 	});
 }
+
+/* NOW USING CLOUDFLARE TUNNELING TO SET UP HTTPS */
+
+// Libraries needed
+const https = require('https');
+
+// Setup the https protocol
+https.createServer
+({
+	cert: fs.readFileSync('/srv/certificate.pem'),
+	key: fs.readFileSync('/srv/privatekey.pem')
+},
+
+// Listen on the redirected port (safety reasons)
+app).listen(8443, () =>
+{
+	console.log(`Server running at ${URI}`);
+});
