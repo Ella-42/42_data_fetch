@@ -327,7 +327,7 @@ function handleRequest(request, response)
 		{
 			fs.writeFileSync
 			(
-				`/srv/log`,
+				`/srv/retriever/log`,
 
 				`On campus:\n
 				\nA1\n\n${JSON.stringify(A1, null, 2)}
