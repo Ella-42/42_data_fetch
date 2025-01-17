@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+
+  retriever:
+    image: node:latest
+    container_name: retriever
+    working_dir: /var/www/js
+    volumes:
+      - .:/var/www/js
+      - /srv/retriever/.env:/var/www/js/.env
+    ports:
+      - "8443:8443"
+    command: sh -c "npm install && node retrieverServer.js"
+
+  webserver:
+    image: nginx:latest
+    container_name: webserver
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - retriever
+    volumes:
+      - /etc/ssl/retriever_ella-peeters_me:/etc/ssl/retriever_ella-peeters_me:ro
+      - /home/lpeeters/.ssh/ella-peeters.me.key:/etc/ssh/ella-peeters.me.key:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro

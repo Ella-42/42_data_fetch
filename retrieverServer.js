@@ -10,7 +10,7 @@ const fs = require('fs');
 const URL = 'https://api.intra.42.fr/v2';
 
 // Set the URI as a variable
-const URI = 'http://retriever.moyai.one/';
+const URI = 'http://retriever.ella-peeters.me/';
 
 // Fetch access token needed for further data requests
 function getToken(code)
@@ -360,7 +360,7 @@ const app = express();
 // Send images to server
 app.use(express.static('images'));
 
-// Setup the http protocol (https is set up via cloudflare tunneling) and listen on the redirected port (safety reasons)
+// Setup http protocol and run over higher port to limit potential exploitation, SSL protocol establishes using Nginx over linked Docker clusters so traffic has extremely limited access
 http.createServer(app).listen(8443, () =>
 {
 	console.log(`Server running at ${URI}`);
