@@ -1,3 +1,5 @@
+/* Unless following GDPR, will not log anything, this was only ever used for debugging during testing and only produced publicly available data. */
+
 // Print user's data
 function printAllData(data)
 {
@@ -26,7 +28,31 @@ function printUserData(data)
 	});
 }
 
-/* NOW USING CLOUDFLARE TUNNELING TO SET UP HTTPS */
+// Write raw data to the log
+try
+{
+	fs.writeFileSync
+	(
+		`/srv/retriever/log`,
+
+		`On campus:\n
+		\nA1\n\n${JSON.stringify(A1, null, 2)}
+		\nA2\n\n${JSON.stringify(A2, null, 2)}
+		\nShi\n\n${JSON.stringify(Shi, null, 2)}
+		\nFu\n\n${JSON.stringify(Fu, null, 2)}
+		\nMi\n\n${JSON.stringify(Mi, null, 2)}`
+	);
+}
+
+// Handle errors
+catch (error)
+{
+	console.error(error);
+}
+
+console.log('Successfully retrieved access token');
+
+/* NOW USING NGINX REVERSE PROXY + STATIC SSL OVER DOCKER CLUSTER TO SET UP HTTPS */
 
 // Libraries needed
 const https = require('https');

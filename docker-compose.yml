@@ -7,11 +7,11 @@ services:
     container_name: retriever
     working_dir: /var/www/js
     volumes:
-      - .:/var/www/js
-      - /srv/retriever/.env:/var/www/js/.env
+      - ./application:/var/www/js:rw
+      - /srv/retriever/.env:/var/www/js/.env:ro
     ports:
       - "8443:8443"
-    command: sh -c "npm install && node retrieverServer.js"
+    command: sh -c "npm install > /dev/null 2> /dev/null && node retrieverServer.js"
 
   webserver:
     image: nginx:latest

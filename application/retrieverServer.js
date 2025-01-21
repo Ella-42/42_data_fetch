@@ -10,7 +10,7 @@ const fs = require('fs');
 const URL = 'https://api.intra.42.fr/v2';
 
 // Set the URI as a variable
-const URI = 'http://retriever.ella-peeters.me/';
+const URI = 'https://retriever.ella-peeters.me';
 
 // Fetch access token needed for further data requests
 function getToken(code)
@@ -34,7 +34,7 @@ function getToken(code)
 				client_id: process.env.id,
 				client_secret: process.env.secret,
 				code: code,
-				redirect_uri: `${URI}`
+				redirect_uri: `${URI}/`
 			}),
 		}
 	)
@@ -49,7 +49,7 @@ function getToken(code)
 				return (getToken(code));
 
 			// Return an error if anything else is wrong
-			throw (new Error(`HTTP error: Status: ${response.status}`));
+			throw (Object.assign(new Error(`HTTP: Status: ${response.status}`), {status: response.status}));
 		}
 
 		// Return data
@@ -63,7 +63,7 @@ function getToken(code)
 	// Handle errors
 	.catch (error =>
 	{
-		console.error('Error: Access token post request:', error.message);
+		console.error('Access token post request:', error.message);
 		throw (error);
 	}));
 }
@@ -93,7 +93,7 @@ function getData(token, url)
 				return (getData(token, url));
 
 			// Return an error if anything else is wrong
-			throw (new Error(`HTTP error: Status: ${response.status}`));
+			throw (Object.assign(new Error(`HTTP: Status: ${response.status}`), {status: response.status}));
 		}
 
 		// Return data
@@ -103,7 +103,7 @@ function getData(token, url)
 	// Handle errors
 	.catch (error =>
 	{
-		console.error('Error: Fetching user data:', error.message);
+		console.error('Fetching user data:', error.message);
 		throw (error);
 	}));
 }
@@ -113,7 +113,7 @@ function getCampus(data)
 {
 	const campus = data.campus[0]?.id;
 	if (!campus)
-		throw (new Error('Error: Could not resolve your campus'));
+		throw (new Error('Could not resolve your campus'));
 
 	return (campus);
 }
@@ -148,7 +148,7 @@ function getOnCampus(token, campus, page)
 
 				// Return an error if anything else is wrong
 				else
-					throw (new Error(`HTTP error: Status: ${response.status}`));
+					throw (Object.assign(new Error(`HTTP: Status: ${response.status}`), {status: response.status}));
 			}
 	
 			// Return data
@@ -172,7 +172,7 @@ function getOnCampus(token, campus, page)
 function getAllOnCampus(token, campus, userCount)
 {
 	// Seriously, their API is really slow...
-	console.log('Working on obtaining data... (this may take a while)');
+	console.log('Working...');
 
 	// Calculate how many pages we will need to fetch
 	const pageLast = Math.ceil(userCount / 100);
@@ -193,7 +193,7 @@ function getAllOnCampus(token, campus, userCount)
 	// Handle errors
 	.catch (error =>
 	{
-		console.error('Error: Fetching user pages:', error.message);
+		console.error('Fetching user pages:', error.message);
 		throw (error);
 	}));
 }
@@ -222,9 +222,9 @@ function formatter(campusUserData)
 				user.image.versions.micro = `${URI}/default_profile_picture.jpg`
 
 			// Sort Antwerp
-			if (user.location.startsWith('a1'))
+			if (user.location[1] === '1')
 				A1.push(user);
-			else if (user.location.startsWith('a2'))
+			else if (user.location[1] === '2')
 				A2.push(user);
 	
 			// Sort Brussels
@@ -253,8 +253,6 @@ function handleRequest(request, response)
 	// Fetch own user data
 	.then (gotToken =>
 	{
-		console.log('Successfully retrieved access token');
-
 		token = gotToken;
 
 		return (getData(token, `${URL}/me`));
@@ -286,7 +284,7 @@ function handleRequest(request, response)
 		return (getAllOnCampus(token, campus, userCount));
 	})
 
-	// Fetch all campus data
+	// Cluster sort
 	.then (campusUserData =>
 	{
 		return (formatter(campusUserData));
@@ -308,49 +306,35 @@ function handleRequest(request, response)
 		// Send the marked-up data to the website
 		response.send
 		(`
-			<h2>Successfully Retrieved Data</h2>
-			<h3>On campus:</h3>
-			<h4>A1 (<span>${A1.length}</span>)</h4>
-			<pre>${A1Formatted}</pre><br>
-			<h4>A2 (<span>${A2.length}</span>)</h4>
-			<pre>${A2Formatted}</pre><br>
-			<h4>Shi (<span>${Shi.length}</span>)</h4>
-			<pre>${ShiFormatted}</pre><br>
-			<h4>Fu (<span>${Fu.length}</span>)</h4>
-			<pre>${FuFormatted}</pre><br>
-			<h4>Mi (<span>${Mi.length}</span>)</h4>
-			<pre>${MiFormatted}</pre>
+			<html>
+				<head>
+					<link rel="icon" type="image/x-icon" href="/favicon.ico">
+					<title>Retriever</title>
+				</head>
+				<body>
+					<h2>Successfully Retrieved Data</h2>
+					<h3>On campus:</h3>
+					<h4>A1 (<span>${A1.length}</span>)</h4>
+					<pre>${A1Formatted}</pre><br>
+					<h4>A2 (<span>${A2.length}</span>)</h4>
+					<pre>${A2Formatted}</pre><br>
+					<h4>Shi (<span>${Shi.length}</span>)</h4>
+					<pre>${ShiFormatted}</pre><br>
+					<h4>Fu (<span>${Fu.length}</span>)</h4>
+					<pre>${FuFormatted}</pre><br>
+					<h4>Mi (<span>${Mi.length}</span>)</h4>
+					<pre>${MiFormatted}</pre>
+				</body>
+			</html>
 		`);
 
-		// Write raw data to the log
-		try
-		{
-			fs.writeFileSync
-			(
-				`/srv/retriever/log`,
-
-				`On campus:\n
-				\nA1\n\n${JSON.stringify(A1, null, 2)}
-				\nA2\n\n${JSON.stringify(A2, null, 2)}
-				\nShi\n\n${JSON.stringify(Shi, null, 2)}
-				\nFu\n\n${JSON.stringify(Fu, null, 2)}
-				\nMi\n\n${JSON.stringify(Mi, null, 2)}`
-			);
-		}
-
-		// Handle errors
-		catch (error)
-		{
-			console.error(error);
-		}
-
+		console.log('Success.');
 	})
 
 	// Handle errors
 	.catch (error =>
 	{
-		response.status(500).send(`Internal Server ${error}`);
-		console.error(error);
+		response.status(error.status).send(`Internal Server ${error}`);
 	});
 }
 
@@ -360,10 +344,10 @@ const app = express();
 // Send images to server
 app.use(express.static('images'));
 
-// Setup http protocol and run over higher port to limit potential exploitation, SSL protocol establishes using Nginx over linked Docker clusters so traffic has extremely limited access
+// Create http, listen on high port for incoming requests from Docker container over proxy, establish https using Nginx reverse proxy + Docker's SSL
 http.createServer(app).listen(8443, () =>
 {
-	console.log(`Server running at ${URI}`);
+	console.log(`Listening to other Docker container`);
 });
 
 // Setup the request handler
